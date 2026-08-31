@@ -1,0 +1,35 @@
+# Project Rules — Movie Search Grid
+
+## Stack & Commands
+- Vite + React (JSX). Components live in `src/components/`, hooks in `src/hooks/`.
+- `npm install`, then `npm run dev` to start the dev server. `npm run build` to build.
+- The OMDB API key is read from `.env` as `VITE_OMDB_API_KEY`. Never commit the real
+  key — commit `.env.example` only. Get a free key at https://www.omdbapi.com.
+
+## API Error Handling Rules (apply to every external API call)
+1. **Never fetch during render.** All side effects (including fetch) go inside
+   `useEffect` with an explicit dependency array.
+2. **Always abort stale requests.** Create an `AbortController` inside the effect,
+   pass `signal` to `fetch`, and call `controller.abort()` in the effect cleanup.
+   This prevents out-of-order responses from overwriting newer searches.
+3. **Debounce user input** (≈400 ms) before firing a request — never send a request
+   per keystroke.
+4. **Treat non-2xx responses as errors.** Map known statuses to friendly messages
+   (401 = bad API key, 429 = rate limited); use a generic message as fallback.
+5. **Validate the JSON payload, not just the HTTP status.** OMDB returns
+   `{ Response: "False", Error: "…" }` for app-level errors (e.g. "Movie not found!",
+   "Too many results."). Throw/handle that before touching `data.Search`.
+6. **Map known API errors to UI-friendly states.** "Movie not found!" is an *empty
+   state* (show a "no results" hint), never a crash or a scary error box.
+7. **Always model the full state machine:** `idle` → `loading` → `success` | `error.
+   Every possible state (including empty success) must render something meaningful.
+8. **Never crash on missing config.** If `VITE_OMDB_API_KEY` is absent, render a
+   clear error state explaining how to fix it — do not throw.
+9. **Handle "N/A" poster values** from OMDB with a placeholder, never a broken image.
+10. **Keep errors human-readable.** Show a short code + message (e.g.
+    `MISSING_API_KEY — Set VITE_OMDB_API_KEY in your .env file`), log details to the
+    console if needed, and never expose raw stack traces to the UI.
+11. **Ignore aborted requests silently** (`err.name === 'AbortError'` → return) so
+    cleanup never flashes an error state during fast typing or unmount.
+12. **Expose a retry affordance** on transient failures so users can refetch without
+    retyping their search.
